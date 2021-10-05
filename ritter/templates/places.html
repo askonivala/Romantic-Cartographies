@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block head %}
+{% endblock %}
+
+{% block globe %}
+{% endblock %}
+
+{% block content %}
+<div class="col-md-10">
+  <div id="mapid"></div>
+
+  <div class="row">
+    <div class="col">
+      <!-- <h4>Places <button type="button" class="btn btn-info" onclick="plotPlacesOnMap('en');">plot to map</button></h4> -->
+      <br>
+      <h4>Places</h4>
+      <table id="places" class="display" style="width:100%">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Entity in DBpedia</th>
+            <th>Type</th>
+          </tr>
+        </thead>
+      </table>
+    </div>
+
+{% endblock %}
+
+{% block script %}
+<script>
+// var places =  places | tojson | safe
+var places = {{ places | safe }};
+
+$(document).ready( function () {
+  enTable = $('#places').DataTable( {
+      data: places,
+      columns: [
+        { data: 'name',
+          "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
+            var longName = oData.entity_id.replace('/place/','');
+            var longName = longName.replace(/_/g,' ');
+            $(nTd).html("<a href='"+oData.entity_id+"'>"+longName+"</a>");
+          }
+        },
+        { data: 'URI',
+          "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
+            var entityName = oData.URI.replace('http://dbpedia.org/resource/','');
+            var entityName = entityName.replace('http://de.dbpedia.org/resource/','');
+            var entityName = entityName.replace(/_/g,' ');
+            $(nTd).html("<a href='"+oData.URI+"'><button>"+entityName+"</button></a>");
+          }
+        },
+        { data: 'type' }
+      ],
+      "order": [[ 0, "asc" ]]
+
+  } );
+} );
+
+</script>
+{% endblock %}

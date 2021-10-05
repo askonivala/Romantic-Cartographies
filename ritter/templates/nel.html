@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block head %}
+{% endblock %}
+
+{% block content %}
+
+<div class="col-md-10">
+  <div id="mapid"></div>
+
+  <h4>Texts</h4>
+
+  <table id="table_id" class="display" style="width:100%">
+    <thead>
+      <tr>
+        <th>Author</th>
+        <th>Title</th>
+        <th>Published</th>
+        <th>Map</th>
+      </tr>
+    </thead>
+  </table>
+
+</div>
+
+{% endblock %}
+
+{% block script %}
+<script>
+var texts = {{ texts | tojson | safe }};
+
+$(document).ready( function () {
+  $('#table_id').DataTable( {
+      data: texts,
+      columns: [
+        { data: 'authors'},
+        { data: 'title',
+          "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
+            $(nTd).html("<i><a href='"+oData.entity_id+"'>"+oData.title+"</a></i>");
+          }
+       },
+       { data: 'pub_year'},
+       { data: 'entity_id'}
+     ],
+     columnDefs: [ {
+       targets: 3,
+       "render": function ( data, type, full, meta ) {
+         return '<button onClick="mapText(\'' + data + '\')">map</button>';
+        }
+      } ]
+  } );
+} );
+
+</script>
+{% endblock %}

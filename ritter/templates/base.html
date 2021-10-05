@@ -1,0 +1,300 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Romantic Cartographies</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://rawcdn.githack.com/python-visualization/folium/master/folium/templates/leaflet.awesome.rotate.css"/>
+
+    <script type=text/javascript src="{{url_for('static', filename='jquery-3.5.1.min.js') }}"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
+    <style>
+      #mapid { height: 800px; }
+    </style>
+
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.22/css/jquery.dataTables.css">
+    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.22/js/jquery.dataTables.js"></script>
+
+    {% block head %}
+    {% endblock %}
+  </head>
+
+  <body>
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-md-2">
+          <h3><a href="/">Ritter 0.7</a></h3>
+          <p>by <a href="https://askonivala.github.io">Asko Nivala</a></p>
+          <ul class="list-group">
+            <li class="list-group-item"><a href="/authors">Authors</a>
+            <li class="list-group-item"><a href="/nel">Corpus</a>
+            <li class="list-group-item"><a href="/places">Place names</a>
+            <li class="list-group-item"><a href="https://github.com/askonivala/Romantic-Cartographies">About</a>
+            <li class="list-group-item"><a href="/admin">Sign in</a>
+          </ul>
+        </div>
+        {% block content %}
+        {% endblock %}
+      </div>
+    </div>
+
+    <script>
+      mymap = L.map('mapid', {
+        center: [47.1, 13.1],
+        zoom: 4,
+        maxZoom: 7,
+        maxZoom: 20
+      });
+
+      var basemap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      	attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+      });
+      basemap.addTo(mymap);
+
+      function noPopup(feature, layer) {
+        layer.unbindPopup();
+      };
+
+      function clearMap () {
+        mymap.eachLayer(function (layer) {
+          if (layer != basemap) {
+            mymap.removeLayer(layer);
+          };
+        });
+        routes = [];
+        routeTitles = [];
+        // TODO: Avoiding crash in a hacky way, need to check if in routes view
+        try {
+          document.getElementById("selected-routes").innerHTML = '';
+        }
+        catch(error) {
+          // console.error(error);
+          // expected output: ReferenceError: nonExistentFunction is not defined
+          // Note - error messages will vary depending on browser
+        }
+      };
+
+      function onEachFeature(feature, layer) {
+         // does this feature have a property named popupContent?
+         if (feature.properties && feature.properties.popupContent) {
+                 layer.bindPopup(feature.properties.popupContent);
+         }
+         // read 1815.geojson name
+         if (feature.properties && feature.properties.NAME) {
+                 layer.bindPopup(feature.properties.NAME);
+         }
+         // read HGIS name
+         if (feature.properties && feature.properties.STAAT_NAME) {
+                 layer.bindPopup(feature.properties.STAAT_NAME);
+         }
+         // read euratlas name
+         if (feature.properties && feature.properties.short_name) {
+                 layer.bindPopup(feature.properties.short_name);
+         }
+         if (feature.properties && feature.properties.name) {
+                 layer.bindPopup(feature.properties.name);
+         }
+      };
+
+      // function mapText (text_id, supportThreshold, mode, showUnsureEntities) {
+      function mapText (text_id) {
+        //clear map and redraw basemap
+        mymap.eachLayer(function (layer) {
+            mymap.removeLayer(layer);
+        });
+        basemap.addTo(mymap);
+
+        // var backend_link = "/fetch_nel_geojson/" + text_id + '/' + supportThreshold + '/' + showUnsureEntities;
+        var backend_link = "/fetch_nel_geojson" + text_id
+        var mode = "confidence";
+        var supportThreshold = 2000;
+
+        function geoJsonData (handleData) {
+         $.ajax({
+           'async': true,
+           'global': false,
+           'url': backend_link,
+           'dataType': "json",
+           'success': function (data) {
+             handleData(data);
+           }
+         });
+        };
+
+        geoJsonData(function(output){
+          var geoJsonLayer = L.geoJSON(output, {
+
+          style: function(feature) {
+
+            if (mode === "confidence") {
+                var support = feature.properties.avg_support;
+                if (support >= supportThreshold) {
+                  return { color: "blue" };
+                } else if (support < supportThreshold) {
+                  return { color: "red" };
+                } else {
+                  return { color: "blue" };
+                }
+            } else if (mode === "sentiment") {
+                var sentiment = feature.properties.avg_sentiment;
+                if (sentiment >= 1) {
+                  return { color: "blue" };
+                } else if (sentiment < 0) {
+                  return { color: "red" };
+                } else {
+                  return { color: "yellow" };
+                }
+              }
+            },
+
+            onEachFeature: onEachFeature,
+
+            pointToLayer: function(feature, latlng) {
+              return L.circleMarker(latlng, {
+                radius: Math.round(feature.properties.scaled_mentions) * 1,
+              });
+            },
+
+          }).addTo(mymap);
+        });
+      };
+
+      // function for rendering GeoJSON, e.g. itineraries
+      function showPlace (geoShape) {
+        // create an object with a list of options to style the circle marker
+        // see http://leafletjs.com/reference-1.3.0.html#path for additional options
+        var myLayerStyle = {
+          radius: 8,
+          fillColor: "#ff7800",
+          color: "#000",
+          weight: 1,
+          opacity: 1,
+          fillOpacity: 0.8
+        };
+
+        // create a vector circle centered on each point feature's latitude and longitude
+        function createCircles (feature, latlng) {
+          return L.circleMarker(latlng, myLayerStyle)
+        };
+
+        // create an options object that specifies which function will called on each feature
+        var myLayerOptions = {
+          pointToLayer: createCircles
+        };
+
+        var geoJsonLayer = L.geoJSON(geoShape, {
+          pointToLayer: createCircles,
+          onEachFeature: onEachFeature,
+          style: function(feature) {
+            switch (feature.properties.type) {
+              case 'comparison': return {color: "#DFFF00", weight: 3, opacity: 0.25, dashArray: '5, 10'};
+              case 'longing': return {color: "#98FB98", weight: 3, opacity: 0.25, dashArray: '5, 10'};
+              default: return {color: feature.properties.style, weight: 3, opacity: 0.5};
+            }
+          }
+        }).addTo(mymap);
+      };
+
+      function plotPlacesOnMap(lang) {
+
+        //clear map and redraw basemap
+        mymap.eachLayer(function (layer) {
+          mymap.removeLayer(layer);
+        });
+        basemap.addTo(mymap);
+
+        if (lang === 'en') {
+
+          var enData = enTable.rows( {order:'index', search:'applied'} ).data().toArray();
+
+          var geojsondata = {
+            'type':'FeatureCollection',
+            'features':[]
+          };
+
+          enData.forEach(function (arrayItem) {
+
+            if (arrayItem.shape != 'nan') {
+              console.log(arrayItem.shape);
+
+              var shapeString = arrayItem.shape;
+              shapeString = shapeString.replace(/\'/g,'\"')
+
+              var geometryJson = JSON.parse(shapeString);
+
+              var mentionFeature = {
+                'type': 'Feature',
+                'properties': {
+                  'name': arrayItem.name,
+                  'mentions': arrayItem.count,
+                },
+                'geometry': geometryJson
+              }
+              geojsondata.features.push(mentionFeature);
+
+            } else {
+              console.log('no geometry for ' + arrayItem.name);
+            };
+          });
+        } else {
+          var enData = deTable.rows( {order:'index', search:'applied'} ).data().toArray();
+
+          var geojsondata = {
+            'type':'FeatureCollection',
+            'features':[]
+          };
+
+          enData.forEach(function (arrayItem) {
+
+            if (arrayItem.shape != 'nan') {
+              console.log(arrayItem.shape);
+
+              var shapeString = arrayItem.shape;
+              shapeString = shapeString.replace(/\'/g,'\"')
+
+              var geometryJson = JSON.parse(shapeString);
+
+              var mentionFeature = {
+                'type': 'Feature',
+                'properties': {
+                  'name': arrayItem.name,
+                  'mentions': arrayItem.count,
+                },
+                'geometry': geometryJson
+              }
+              geojsondata.features.push(mentionFeature);
+
+            } else {
+              console.log('no geometry for ' + arrayItem.name);
+            };
+          });
+        };
+
+        var geojson = JSON.stringify(geojsondata);
+
+        var geoJsonLayer = L.geoJSON(geojsondata, {
+
+          onEachFeature: onEachFeature,
+
+          pointToLayer: function(feature, latlng) {
+            return L.circleMarker(latlng, {
+              radius: Math.round(feature.properties.scaled_mentions) * 0.05,
+            });
+          },
+
+        }).addTo(mymap);
+    };
+
+    </script>
+
+    {% block script %}
+    {% endblock %}
+
+  </body>
+
+</html>

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block head %}
+{% endblock %}
+
+{% block globe %}
+{% endblock %}
+
+{% block content %}
+<div class="col-md-10">
+  <div id="mapid"></div>
+
+  <div class="row">
+    <div class="col">
+      <!-- <h4>Places <button type="button" class="btn btn-info" onclick="plotPlacesOnMap('en');">plot to map</button></h4> -->
+      <br>
+      <h4>{{ place_name }}</h4>
+      <table id="texts" class="display" style="width:100%">
+        <thead>
+          <tr>
+            <th>Text</th>
+          </tr>
+        </thead>
+      </table>
+    </div>
+
+{{ texts }}
+
+{% endblock %}
+
+{% block script %}
+<script>
+// var places =  places | tojson | safe
+var texts = {{ texts | safe }};
+
+$(document).ready( function () {
+  enTable = $('#texts').DataTable( {
+      data: texts,
+      columns: [
+        { data: 'title',
+          "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
+            $(nTd).html("<i><a href='"+oData.entity_id+"'>"+oData.title+"</a></i>");
+          }
+        }
+      ],
+      "order": [[ 0, "asc" ]]
+  } );
+} );
+
+</script>
+{% endblock %}

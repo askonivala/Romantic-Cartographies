@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block head %}
+{% endblock %}
+
+{% block content %}
+<div class="col-md-10">
+
+  <div id="mapid"></div>
+
+  <div>
+    <br>
+    <h4>Itineraries</h4>
+
+    <ul>
+    {% for way in ways %}
+      <li><a href='{{ way.internal_uri }}'>{{ way.name }}</a></li>
+    {% endfor %}
+    </ul>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+  showPlace({{ routes_geojson_map|tojson|safe }});
+</script>
+{% endblock %}

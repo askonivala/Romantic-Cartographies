@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block head %}
+{% endblock %}
+
+{% block content %}
+<div class="col-md-10">
+
+  <div id="mapid"></div>
+
+  <div>
+    <br>
+    <h4>{{way.name}}</h4>
+
+    {% if way_desc %}
+      {% autoescape false %}
+        <p align="justify">{{ way_desc }}</p>
+      {% endautoescape %}
+    {% endif %}
+
+    {% for waypoint in way.waypoints %}
+      <p>{{ waypoint.md_interpretation|markdown}}</p>
+    {% endfor %}
+
+  </div>
+
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+  showPlace({{ routes_geojson_map|tojson|safe }})
+</script>
+{% endblock %}

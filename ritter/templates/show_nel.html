@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block head %}
+{% endblock %}
+
+{% block content %}
+
+<div class="col-md-10">
+  <div id="mapid"></div>
+
+  <br>
+  <h4>Map settings</h4>
+  <div class="row">
+    <div class="col">
+      <label for="customRange1">Support threshold</label>
+      <input type="range" class="custom-range" min="0" max="10000" id="supportThreshold" onchange="updateTextInput(this.value);">
+      <input type="text" id="textInput" value="2000">
+    </div>
+    <div class="col">
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="showUncertain">
+        <label class="form-check-label" for="showUncertain">Show uncertain entities</label>
+      </div>
+    </div>
+  </div>
+  <button onclick="updateMapValues();">Map text</button>
+  <br>
+  <hr/>
+  <br>
+  <br>
+  <h4>{{ text_name }}</h4>
+
+  <br>
+  <h5>Places</h5>
+  <table id="places" class="display" style="width:100%">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Entity in DBpedia</th>
+        <th>Type</th>
+        <th>Count</th>
+      </tr>
+    </thead>
+  </table>
+
+  <br>
+  <h5>Full text</h5>
+  {% for chapter in text.chapters %}
+    <br>
+    <h5>Chapter {{ chapter.number | int + 1 }}</h5>
+    <table class="table">
+      <tr>
+        <th>Text</th>
+        <th>Entities</th>
+      </tr>
+      {% for paragraph in chapter.paragraphs %}
+      <tr>
+        <td>
+          {% autoescape false %}
+          <p align="justify">{{ markup_data.chapters[chapter.number | string][paragraph.number | string]["markup"] }}</p>
+          {% endautoescape %}
+        </td>
+        <td>
+          {% for tag in paragraph["entities"]%}
+            <a class="btn btn-primary" href='{{ tag["external_URI"] }}' role="button">{{ tag["surfaceForm"] }}</a>
+          {% endfor %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+  function updateTextInput(val) {
+    document.getElementById('textInput').value=val;
+  };
+
+  function updateMapValues() {
+    // confidence or sentiment?
+    var mode = document.getElementsByName('exampleRadios');
+
+    for (var i = 0, length = mode.length; i < length; i++) {
+      if (mode[i].checked) {
+        var mapMode = mode[i].value;
+        break;
+      }
+    }
+
+    var supportThreshold = document.getElementById('textInput').value;
+    var showUnsureEntities = document.getElementById('showUncertain').checked;
+
+    mapText("{{ text_id }}", supportThreshold, mapMode, showUnsureEntities);
+  };
+
+  // var supportThreshold = 2000;
+  var supportThreshold = 2000;
+  var showUnsureEntities = document.getElementById("showUncertain");
+  // mapText({{ text_id }}, supportThreshold, "confidence", showUnsureEntities);
+
+var places = {{ places | safe }};
+
+$(document).ready( function () {
+  $('#places').DataTable( {
+      data: places,
+      columns: [
+        { data: 'name'},
+        { data: 'URI',
+          "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
+            var entityName = oData.URI.replace('http://dbpedia.org/resource/','');
+            var entityName = entityName.replace('http://de.dbpedia.org/resource/','');
+            var entityName = entityName.replace(/_/g,' ');
+            $(nTd).html("<a href='"+oData.URI+"'><button>"+entityName+"</button></a>");
+          }
+        },
+        { data: 'type' },
+        { data: 'count' }
+      ],
+      "order": [[ 3, "desc" ]]
+  } );
+} );
+
+</script>
+{% endblock %}
